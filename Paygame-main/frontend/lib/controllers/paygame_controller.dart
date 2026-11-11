@@ -8,9 +8,6 @@ class PaygameController extends ChangeNotifier {
   int userPointsBalance = 2000;
 
   OrderModel? latestOrder;
-  final List<CouponModel> _coupons = [];
-  final Set<String> _recordedOrders = {};
-  List<CouponModel> get coupons => List.unmodifiable(_coupons);
 
   // Initial Mock Data (No Backend Required)
   List<GameModel> games = [
@@ -198,11 +195,7 @@ class PaygameController extends ChangeNotifier {
   }
 
   void addOrder(OrderModel order) {
-    if (order.status != 'completed' || !_recordedOrders.add(order.orderId)) {
-      return;
-    }
     latestOrder = order;
-    _coupons.removeWhere((coupon) => coupon.id == order.couponId);
     userPointsBalance = order.pointsBalance;
 
     final dateStr =
@@ -218,13 +211,13 @@ class PaygameController extends ChangeNotifier {
       ),
     );
 
-    if (order.spentPoints > 0) {
+    if (order.discountAmount > 0) {
       pointHistory.insert(
         1,
         RewardHistory(
           title: 'ใช้แต้มเป็นส่วนลด · ${order.orderId}',
           date: dateStr,
-          amount: '−${order.spentPoints}',
+          amount: '−100',
           isEarned: false,
         ),
       );
@@ -236,23 +229,6 @@ class PaygameController extends ChangeNotifier {
   bool redeemReward(RewardItem reward) {
     if (userPointsBalance < reward.cost) return false;
 
-    final terms = switch (reward.id) {
-      'r1' => (2000, 0, 0),
-      'r2' => (5000, 0, 30000),
-      'r3' => (0, 5, 0),
-      'r4' => (15000, 0, 100000),
-      _ => null,
-    };
-    if (terms == null || reward.cost <= 0) return false;
-    _coupons.add(
-      CouponModel(
-        id: 'coupon-${DateTime.now().microsecondsSinceEpoch}-${_coupons.length}',
-        name: reward.name,
-        amountSatang: terms.$1,
-        percent: terms.$2,
-        minimumSatang: terms.$3,
-      ),
-    );
     userPointsBalance -= reward.cost;
     final now = DateTime.now();
     final dateStr = '${now.day}/${now.month}/${now.year + 543}';

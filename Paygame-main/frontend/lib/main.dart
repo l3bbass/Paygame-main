@@ -5,7 +5,6 @@ import 'controllers/paygame_controller.dart';
 import 'models/paygame_models.dart';
 import 'theme/app_theme.dart';
 import 'views/user/home_view.dart';
-import 'views/user/coupons_view.dart';
 import 'views/user/purchase_history_view.dart';
 import 'views/user/history_view.dart';
 import 'views/login.dart';
@@ -63,8 +62,6 @@ class _GamePayShellState extends State<GamePayShell> {
         earnedPoints: order.earnedPoints,
         pointsBalance: order.pointsBalance,
         createdAt: order.createdAt,
-        spentPoints: order.spentPoints,
-        couponId: order.couponId,
       ),
     );
 
@@ -86,7 +83,6 @@ class _GamePayShellState extends State<GamePayShell> {
           ),
           PurchaseHistoryView(orders: _orders),
           const RewardsScreen(),
-          CouponsView(coupons: context.watch<PaygameController>().coupons),
           const LoginScreen(),
         ],
       ),
@@ -110,10 +106,6 @@ class _GamePayShellState extends State<GamePayShell> {
             icon: Icon(Icons.card_giftcard_outlined),
             selectedIcon: Icon(Icons.card_giftcard),
             label: 'แลกรางวัล',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.confirmation_number_outlined),
-            label: 'คูปอง',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),

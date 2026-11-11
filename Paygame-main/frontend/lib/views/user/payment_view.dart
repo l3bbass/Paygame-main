@@ -33,8 +33,6 @@ class PaygameOrder {
     required this.earnedPoints,
     required this.pointsBalance,
     required this.createdAt,
-    this.spentPoints = 0,
-    this.couponId,
   });
   final String id;
   final PaygameGame game;
@@ -46,8 +44,6 @@ class PaygameOrder {
   final bool success;
   final int earnedPoints, pointsBalance;
   final DateTime createdAt;
-  final int spentPoints;
-  final String? couponId;
   int get totalSatang => priceSatang - discountSatang + feeSatang;
 }
 
@@ -60,14 +56,12 @@ class PaygamePayment extends StatefulWidget {
     required this.uid,
     this.server = 'Asia',
     this.initialPoints = 0,
-    this.coupons = const [],
     this.onPaymentCompleted,
   });
   final PaygameGame game;
   final PaygamePack pack;
   final String uid, server;
   final int initialPoints;
-  final List<CouponModel> coupons;
   final ValueChanged<PaygameOrder>? onPaymentCompleted;
   @override
   State<PaygamePayment> createState() => _PaygamePaymentState();
@@ -78,19 +72,13 @@ class _PaygamePaymentState extends State<PaygamePayment> {
   static const _muted = Color(0xFF68626B);
   late int _points;
   bool _discount = false, _busy = false;
-  CouponModel? _coupon;
   PaygameMethod _method = PaygameMethod.qr;
   PaygameGame get _game => widget.game;
   PaygamePack get _pack => widget.pack;
   String get _server => widget.server;
   int get _price => _pack.price * 100;
-  CheckoutDiscount get _discounts => CheckoutDiscount(
-    priceSatang: _price,
-    points: _points,
-    usePoints: _discount,
-    coupon: _coupon,
-  );
-  int get _saving => _discounts.totalSatang;
+  int get _saving =>
+      _discount && _points >= 100 ? (_price < 1000 ? _price : 1000) : 0;
   int get _fee => ((_price - _saving) * _method.basisPoints / 10000).round();
   int get _total => _price - _saving + _fee;
   int get _earned => (_price - _saving) ~/ 1000;
@@ -248,38 +236,6 @@ class _PaygamePaymentState extends State<PaygamePayment> {
               ],
             ),
             const Divider(height: 28),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(
-                Icons.confirmation_number_outlined,
-                color: _red,
-              ),
-              title: Text(_coupon?.name ?? 'เลือกคูปอง'),
-              subtitle: const Text('ใช้ได้ 1 ใบต่อครั้ง และใช้ร่วมกับคอยน์ได้'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _busy
-                  ? null
-                  : () async {
-                      final selected = await Navigator.push<CouponModel>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CouponsView(
-                            coupons: widget.coupons,
-                            priceSatang: _price,
-                            selectedId: _coupon?.id,
-                          ),
-                        ),
-                      );
-                      if (mounted && selected != null) {
-                        setState(() => _coupon = selected);
-                      }
-                    },
-            ),
-            if (_coupon != null)
-              TextButton(
-                onPressed: _busy ? null : () => setState(() => _coupon = null),
-                child: const Text('ไม่ใช้คูปอง'),
-              ),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               secondary: const Icon(
@@ -287,14 +243,12 @@ class _PaygamePaymentState extends State<PaygamePayment> {
                 color: Color(0xFFAA7B12),
               ),
               title: const Text(
-                'ใช้คอยน์สูงสุด (10 คอยน์ = ฿1)',
+                'ใช้ 100 แต้ม ลด ฿10',
                 style: TextStyle(fontSize: 14),
               ),
-              subtitle: Text(
-                'มี ${_number(_points)} คอยน์ · ใช้ ${_discounts.spentPoints} คอยน์',
-              ),
+              subtitle: Text('มี ${_number(_points)} แต้ม'),
               value: _discount,
-              onChanged: _points <= 0 || _busy
+              onChanged: _points < 100 || _busy
                   ? null
                   : (v) => setState(() => _discount = v),
             ),
@@ -339,8 +293,7 @@ class _PaygamePaymentState extends State<PaygamePayment> {
         Column(
           children: [
             _billRow('ราคาแพ็กเกจ', _money(_price)),
-            _billRow('ส่วนลดคูปอง', '−${_money(_discounts.couponSatang)}'),
-            _billRow('ส่วนลดคอยน์', '−${_money(_discounts.coinSatang)}'),
+            _billRow('ส่วนลดจากแต้ม', '−${_money(_saving)}'),
             _billRow('ค่าธรรมเนียม', _money(_fee)),
             const Divider(),
             _billRow('ยอดสุทธิ', _money(_total), emphasis: true),
@@ -444,7 +397,7 @@ class _PaygamePaymentState extends State<PaygamePayment> {
       if (!mounted || success == null) return;
       final earned = success ? _earned : 0;
       final balance = success
-          ? _points - _discounts.spentPoints + earned
+          ? _points - (_saving > 0 ? 100 : 0) + earned
           : _points;
       final order = PaygameOrder(
         id: 'GP-${DateTime.now().microsecondsSinceEpoch}',
@@ -460,8 +413,6 @@ class _PaygamePaymentState extends State<PaygamePayment> {
         earnedPoints: earned,
         pointsBalance: balance,
         createdAt: DateTime.now(),
-        spentPoints: success ? _discounts.spentPoints : 0,
-        couponId: success ? _coupon?.id : null,
       );
       setState(() {
         _points = balance;
