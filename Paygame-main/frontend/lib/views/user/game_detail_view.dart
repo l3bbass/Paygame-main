@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../models/paygame_models.dart';
+import 'coupons_view.dart';
 
 part 'payment_view.dart';
 
@@ -85,10 +87,12 @@ class PaygamePackage extends StatefulWidget {
     super.key,
     this.gameId = 'rov',
     this.initialPoints = 0,
+    this.coupons = const [],
     this.onPaymentCompleted,
   });
   final String gameId;
   final int initialPoints;
+  final List<CouponModel> coupons;
   final ValueChanged<PaygameOrder>? onPaymentCompleted;
 
   @override
@@ -158,6 +162,7 @@ class _PaygamePackageState extends State<PaygamePackage> {
           uid: _uid.text,
           server: _server,
           initialPoints: _points,
+          coupons: widget.coupons,
           onPaymentCompleted: (order) {
             if (mounted) setState(() => _points = order.pointsBalance);
             if (order.success && mounted) Navigator.of(context).pop();
